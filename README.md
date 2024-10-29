@@ -1,53 +1,44 @@
-# Dockerizing SpringBoot Application
+# SpringBoot-DevOps Project
 
-This guide provides detailed steps to dockerize the **SpringBoot-DevOps** bank application, deploying it with a MySQL database using both manual Docker commands and Docker Compose.
+This guide provides detailed steps to **dockerize**, **publish**, and **deploy** the **SpringBoot-DevOps** bank application using **Docker** and **Kubernetes**. It covers both manual setup and automation with **Docker Compose** and **Kubernetes** using a **Kind cluster**.
 
----
+## Table of Contents
 
-## Prerequisites
-
-- Docker installed on your machine  
-- Docker Compose installed for automation  
-- Ensure port **8000** is open (or change it as needed).  
-
-**Note:** By default, Spring Boot apps run on **port 8080**. We are overriding this to run on **port 8000** using the configuration property `service.port=8000`.
+| **Section**                                   | **Description**                                          |
+|-----------------------------------------------|----------------------------------------------------------|
+| [Dockerizing the Application](#dockerizing-the-application) | Containerize and run the Spring Boot app with MySQL. |
+| [Tagging and Pushing to Docker Hub](#tagging-and-pushing-to-docker-hub) | Push the Docker image to Docker Hub for sharing. |
+| [Deploying on Kubernetes](#deploying-on-kubernetes)         | Deploy the app using Kubernetes and Kind. |
 
 ---
 
-## Project Structure
+## Dockerizing the Application  
 
-```
-SpringBoot-DevOps/
-│
-├── src/                # Application source code
-├── Dockerfile          # Docker configuration for the Spring Boot app
-├── docker-compose.yml  # Automated setup configuration
-└── README.md           # This documentation file
-```
+This section explains how to containerize the **SpringBoot-DevOps** bank application and set it up manually and via Docker Compose.
 
----
+### Manual Dockerization Steps  
 
-## Manual Dockerization Steps
-
-### 1. Clone the Repository and Build the Docker Image
+#### 1. Clone the Repository and Build the Docker Image  
 
 ```bash
-git clone <repo-url> SpringBoot-DevOps
+git clone https://github.com/atkaridarshan04/SpringBoot-DevOps.git
 cd SpringBoot-DevOps
 
 # Build the Docker image for the application
 docker build -t springboot-bankapp .
 ```
 
-### 2. Create a Docker Network
+#### 2. Create a Docker Network  
 
-Create a Docker network named `bankapp` to allow the containers to communicate.
+Create a custom network for inter-container communication:
 
 ```bash
 docker network create bankapp
 ```
 
-### 3. Run the MySQL Database Container
+#### 3. Run the MySQL Database Container  
+
+Start a MySQL container:
 
 ```bash
 docker run -itd --name mysql \
@@ -57,10 +48,9 @@ docker run -itd --name mysql \
   mysql:latest
 ```
 
-- **`MYSQL_ROOT_PASSWORD`**: Sets the root password for MySQL.  
-- **`MYSQL_DATABASE`**: Creates a new database named `bankappdb`.  
+#### 4. Run the SpringBoot Application Container  
 
-### 4. Run the SpringBoot Application Container
+Launch the Spring Boot application:
 
 ```bash
 docker run -itd --name BankApp \
@@ -72,47 +62,36 @@ docker run -itd --name BankApp \
   springboot-bankapp
 ```
 
-- **`SPRING_DATASOURCE_URL`**: Points to the MySQL container on the `bankapp` network.  
-- **`-p 8000:8000`**: Maps the application to **port 8000** on your machine.  
-- **Note**: By setting `server.port=8000` in the application properties or environment variables, the app runs on **port 8000** instead of the default **8080**.
+#### 5. Verify the Running Containers  
 
-### 5. Verify the Running Containers
+Check if both containers are up and running:
 
 ```bash
 docker ps
 ```
 
-You should see two containers: **MySQL** and **BankApp**.
+#### 6. Access the Application  
+
+- **Remote Instance**:  
+  `http://<public-ip>:8000`  
+- **Local Instance**:  
+  `http://localhost:8000`  
 
 ---
 
-### 6. Access the Application
+### Automating Setup with Docker Compose  
 
-- For remote instances:
-  ```
-  http://<public-ip>:8000
-  ```
-- For local instances:
-  ```
-  http://localhost:8000
-  ```
+#### 1. Start the Services  
 
----
-
-## Automating Setup with Docker Compose
-
-To automate the entire setup, use Docker Compose.
-
-
-### 1. Start the Services
+Launch the containers in detached mode:
 
 ```bash
 docker-compose up -d
 ```
 
-This command launches both the MySQL and SpringBoot application containers in detached mode.
+#### 2. Verify the Running Services  
 
-### 2. Verify the Running Services
+Confirm that the services are running:
 
 ```bash
 docker ps
@@ -120,20 +99,145 @@ docker ps
 
 ---
 
-## Stopping and Cleaning Up
+### Stopping and Cleaning Up  
 
-### 1. Stop and Remove the Containers
+#### 1. Stop and Remove the Containers  
+
+Stop and remove all containers created by Docker Compose:
 
 ```bash
 docker-compose down
 ```
 
-### 2. Manually Remove Docker Network (Optional)
+#### 2. Remove Docker Network (Optional)  
 
-If needed, remove the custom network:
+To clean up the network:
 
 ```bash
 docker network rm bankapp
+```
+
+---
+
+## Tagging and Pushing to Docker Hub  
+
+To publish the Docker image to **Docker Hub**, follow these steps:
+
+### 1. Login to Docker Hub  
+
+Authenticate with Docker Hub:
+
+```bash
+docker login
+```
+
+### 2. Tag the Docker Image  
+
+Label your image for pushing:
+
+```bash
+docker tag springboot-bankapp atkaridarshan04/springboot-bankapp:v1
+```
+
+### 3. Push the Image to Docker Hub  
+
+Upload the image to your Docker Hub repository:
+
+```bash
+docker push atkaridarshan04/springboot-bankapp:v1
+```
+
+---
+
+## Deploying on Kubernetes  
+
+This section details deploying the application using a **Kind** (Kubernetes-in-Docker) cluster.
+
+### Kubernetes Setup with Kind Cluster
+
+#### 1. Install Kind  
+
+Download and install Kind:
+
+```bash
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+```
+
+#### 2. Verify the Installation  
+
+Check the installed version of Kind:
+
+```bash
+kind version
+```
+
+#### 3. Create a Kind Cluster  
+
+Set up a new Kind cluster:
+
+```bash
+kind create cluster
+```
+
+#### 4. Create and Set Namespace  
+
+Establish a namespace for your application:
+
+```bash
+kubectl create ns bankapp
+kubectl config set-context --current --namespace=bankapp
+```
+
+---
+
+### Deploying Application and Services  
+
+1. **Apply the Persistent Volume** configuration:  
+   ```bash
+   kubectl apply -f pv.yml
+   ```
+
+2. **Apply the Persistent Volume Claim**:  
+   ```bash
+   kubectl apply -f pvc.yml
+   ```
+
+3. **Apply Secrets** for BankApp and MySQL credentials:  
+   ```bash
+   kubectl apply -f secrets.yml
+   ```
+
+4. **Deploy the MySQL Database**:  
+   ```bash
+   kubectl apply -f mysql.yml
+   ```
+
+5. **Deploy the Spring Boot Application**:  
+   ```bash
+   kubectl apply -f bankapp.yml
+   ```
+
+6. **Verify the Pods and Services**:  
+   ```bash
+   kubectl get pods
+   kubectl get svc
+   ```
+
+7. **Access the Application** at:  
+   ```plaintext
+   http://<instance-ip>:30008
+   ```
+
+---
+
+### Cleanup  
+
+To remove all resources, delete the **bankapp** namespace:
+
+```bash
+kubectl delete ns bankapp
 ```
 
 ---

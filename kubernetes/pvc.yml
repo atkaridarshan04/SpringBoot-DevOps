@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: bankapp
+spec:
+  resources:
+    request:
+      storage: 1Gi
+  accessMode:
+    - ReadWriteOnce
+  storageClass: manual
