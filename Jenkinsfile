@@ -87,46 +87,38 @@ pipeline {
 
         stage ('Push Images to DockerHub') {
             steps {
-                withDockerRegistry(credentialsID: 'docker-cred') {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-token', passwordVariable: 'dockerhubpass', usernameVariable: 'dockerhubuser')]) {
+                    sh "docker login -u ${dockerhubuser} -p ${dockerhubpass}"
+                    }
                     sh "docker push atkaridarshan04/springboot-bankapp:${params.DOCKER_IMAGE_TAG}"
                 }
             }
         }
 
-        stage("Git: Code update and push to GitHub"){
-            steps{
-                script{
-                    withCredentials([gitUsernamePassword(credentialsId: 'github-token', gitToolName: 'Default')]) {
-                        
-                        sh ''' 
-                        # clone repo
-                        git clone http://github.com/atkaridarshan04/SpringBoot-DevOps.git
-                        cd SpringBoot-DevOps
+        stage("Git: Code update and push to GitHub") {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
 
-                        repo_dir=${pwd}
+                        sh "echo 'Docker Image Tag: ${params.DOCKER_IMAGE_TAG}'"
+                        sh "git clone https://github.com/atkaridarshan04/SpringBoot-DevOps.git"
 
-                        # Change the image tag
-                        sed -i 's|image: atkaridarshan04/springboot-bankapp:.*|image: atkaridarshan04/springboot-bankapp:'${params.DOCKER_IMAGE_TAG}'|'${repo_dir}/SpringBoot-DevOps/kubernetes/bankapp.yml
-                        '''
+                        dir('SpringBoot-DevOps/kubernetes') {
+                            sh "sed -i -e 's/springboot-bankapp.*/springboot-bankapp:${params.DOCKER_IMAGE_TAG}/g' bankapp.yml"
+                        }
 
-                        sh '''
-                        cd SpringBoot-DevOps
-
-                        git config user.email "jenkins@example.com"
-                        git config user.name "jenkins"
-
-                        echo "Checking repository status: "
-                        git status
-
-                        echo "Adding changes to git: "
-                        git add .
-                        
-                        echo "Commiting changes: "
-                        git commit -m "Updated Image Tag to ${DOCKER_IMAGE_TAG}"
-                        
-                        echo "Pushing changes to github: "
-                        git push https://github.com/atkaridarshan04/SpringBoot-DevOps.git main
-                        '''
+                        dir('SpringBoot-DevOps') {
+                            sh """
+                                git config user.email "jenkins@example.com"
+                                git config user.name "jenkins"
+                                
+                                git status
+                                git add .
+                                git commit -m "Updated Image Tag to ${params.DOCKER_IMAGE_TAG}"
+                                git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/atkaridarshan04/SpringBoot-DevOps.git main
+                            """
+                        }
                     }
                 }
             }
