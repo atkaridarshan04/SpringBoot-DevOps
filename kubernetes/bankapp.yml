@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: bankapp
-          image: atkaridarshan04/springboot-bankapp:v1
+          image: atkaridarshan04/springboot-bankapp:v2
           ports:
             - containerPort: 8000
           env:
