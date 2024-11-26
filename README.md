@@ -175,10 +175,27 @@ kind version
 
 #### 3. Create a Kind Cluster  
 
-Set up a new Kind cluster:
+Create a `kind-config.yaml` file, as Kind runs Kubernetes in Docker containers, and by default, NodePorts might not be exposed outside the host (Docker bridge network).
 
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30008
+        hostPort: 30008
+        protocol: TCP
+
+```
+Set up a new Kind cluster:
 ```bash
-kind create cluster
+kind create cluster --config kind-config.yaml
+```
+
+View the created cluster
+```bash
+kubectl cluster-info --context kind-kind
 ```
 
 #### 4. Create and Set Namespace  
@@ -238,6 +255,7 @@ To remove all resources, delete the **bankapp** namespace:
 
 ```bash
 kubectl delete ns bankapp
+kind delete cluster
 ```
 
 ---
